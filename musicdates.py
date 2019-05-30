@@ -7,37 +7,45 @@
 import mpd
 import numpy as np
 import matplotlib.pyplot as plt
+import re
+
 def connect_client():
     """Connect to MPD Client"""
     client = mpd.MPDClient()
     client.connect("localhost", 6600)
     return client
 
-#let's start by doing it just with the current playlist before we quadrispaz
-#everything by going through the whole database.
 client = connect_client()
-raw_dates = []
 
+raw_dates = client.list("date")
+clean_dates = []
+pattern = '^[0-9]{4}'
+for date in raw_dates:
+    clean_date = re.findall(pattern, date)
+    if clean_date:
+        clean_dates.append(clean_date[0])
 
-for song in client.playlistinfo():
-    try:
-        raw_dates.append(song["date"][:4])
-    except:
-        pass
-raw_dates.sort()
-unique_dates = np.unique(raw_dates)
-
+unique_dates=np.unique(clean_dates)
 date_dict = {}
-for unique_date in unique_dates:
-   date_dict[unique_date] = 0 
 
-for raw_date in raw_dates:
-    date_dict[raw_date] += 1
+for unique_date in unique_dates:
+   date_dict[unique_date] = int(client.count("date",unique_date)['songs'])
 
 print(date_dict)
 
-plt.figure(num=1, figsize=(14,5))
+plt.figure(num=1, figsize=(16,6))
 plt.style.use('ggplot')
-plt.bar(date_dict.keys(),date_dict.values())
-plt.xticks(rotation=45)
+
+x_positions=[]
+count=1
+for date in unique_dates:
+    x_positions.append(count)
+    count += 1
+
+bar_heights=list(date_dict.values())
+plt.bar(x_positions, bar_heights)
+plt.xticks( x_positions,unique_dates, rotation=45)
+plt.ylabel('number of music files')
+plt.title('Music Files By Year Of Release')
+
 plt.show()
